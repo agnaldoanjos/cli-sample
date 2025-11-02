@@ -1,23 +1,26 @@
-# Exemplo de Projeto CLI em Python
+# LVS CLI - Cliente para API de Business
 
 ## 📋 Descrição do Projeto
 
-Este projeto é um exemplo prático de como criar uma Interface de Linha de Comando (CLI) em Python que funciona tanto no Windows (CMD/PowerShell) quanto em shells Unix (bash). A CLI demonstra conceitos essenciais como:
+Este projeto é uma Interface de Linha de Comando (CLI) em Python para interagir com APIs de business. A CLI fornece operações completas de CRUD (Create, Read, Update, Delete) com autenticação JWT via OAuth2. Funciona tanto no Windows (CMD/PowerShell) quanto em shells Unix (bash).
 
-- Autenticação JWT com APIs
+**Funcionalidades Principais:**
+- Autenticação OAuth2 com Basic Auth + JWT
+- Operações CRUD completas (Create, Get, Update, Delete)
+- Gerenciamento automático de tokens
+- Suporte a escopos (READ/WRITE)
 - Processamento de arquivos JSON
-- Criação de comandos personalizados
-- Gerenciamento de dependências
-- Distribuição via pip
+- Compatibilidade multiplataforma
 
-## 🎯 Casos de Uso Exemplo
+## 🎯 Casos de Uso
 
 A CLI `lvs` foi projetada para:
-- **Automação de processos** empresariais
-- **Integração com APIs** RESTful
-- **Processamento batch** de dados JSON
-- **Ferramentas de desenvolvimento** internas
-- **Scripts de deploy** e administração
+- **Gestão de dados empresariais** via API
+- **Automação de processos** de negócio
+- **Integração com sistemas** BackOffice
+- **Scripts de administração** e deploy
+- **Migração e backup** de dados
+- **Desenvolvimento e testes** de APIs
 
 ## 🚀 Instalação Rápida
 
@@ -85,26 +88,54 @@ source ~/.bashrc
 
 ### Comandos Disponíveis
 
-#### 1. Comando Echo (Teste)
+#### 1. Autenticação
 ```bash
-# Teste básico da CLI
-lvs -echo "Hello World"
+# Exibir token JWT atual
+lvs -auth
 
-# Saída esperada:
-# Hello World
+# Com escopo específico
+lvs -auth -scope WRITE
 ```
 
-#### 2. Criar Business via JSON
+#### 2. Operações CRUD
+
+**Criar Business:**
 ```bash
-# Cria um business a partir de arquivo JSON
 lvs -create business.json
+```
+
+**Obter Business:**
+```bash
+# Exibir na console
+lvs -get 123
+
+# Salvar em arquivo
+lvs -get 123 -output business.json
+lvs -get 123 > business.json
+```
+
+**Atualizar Business (PUT - substituição completa):**
+```bash
+lvs -put 123 business_updated.json
+```
+
+**Atualizar Business (POST - atualização parcial):**
+```bash
+lvs -post 123 business_partial_update.json
+```
+
+**Deletar Business:**
+```bash
+lvs -delete 123
 ```
 
 ### Exemplo de Arquivo business.json
 ```json
 {
+  "id": "123",
   "name": "Minha Empresa LTDA",
   "type": "Tecnologia",
+  "status": "ACTIVE",
   "address": {
     "street": "Rua Exemplo",
     "number": "123",
@@ -114,6 +145,10 @@ lvs -create business.json
   "contact": {
     "email": "contato@empresa.com",
     "phone": "+5511999999999"
+  },
+  "metadata": {
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
   }
 }
 ```
@@ -125,23 +160,30 @@ lvs --help
 
 **Saída:**
 ```
-usage: lvs [-h] [-create FILE] [-echo STRING]
+usage: lvs [-h] [-create FILE] [-get ID] [-put ID FILE] [-post ID FILE] 
+           [-delete ID] [-auth] [-output FILE] [-scope SCOPE]
 
 LVS Client CLI
 
 optional arguments:
-  -h, --help     show this help message and exit
-  -create FILE   Criar business a partir de arquivo JSON
-  -echo STRING   Exibe a string fornecida
+  -h, --help       show this help message and exit
+  -create FILE     Criar business a partir de arquivo JSON
+  -get ID          Obter business específico por ID
+  -put ID FILE     Atualizar business completo (PUT)
+  -post ID FILE    Atualizar business parcial (POST)
+  -delete ID       Deletar business por ID
+  -auth            Exibir token de autenticação
+  -output FILE     Arquivo de saída para o comando get
+  -scope SCOPE     Escopo para autenticação (READ/WRITE)
 ```
 
 ## 🔧 Funcionamento Interno
 
 ### Fluxo de Autenticação
-1. **Recupera credenciais** das variáveis de ambiente
-2. **Obtém token JWT** da API de autenticação
-3. **Valida token** antes das requisições
-4. **Envia dados** para o endpoint de business
+1. **Basic Auth** → Credenciais das variáveis de ambiente
+2. **Token JWT** → Obtido via OAuth2 com scope específico
+3. **Bearer Token** → Usado para requisições à API BackOffice
+4. **Renovação Automática** → Token é renovado quando expirado
 
 ### Estrutura do Projeto
 ```
@@ -151,8 +193,18 @@ python-cli/
 ├── requirements.txt    # Dependências do projeto
 ├── README.md           # Este arquivo
 └── examples/           # Exemplos de uso
-    └── business.json   # Exemplo de JSON
+    ├── business.json           # Exemplo completo
+    ├── business_create.json    # Para criação
+    └── business_update.json    # Para atualização
 ```
+
+## 🔐 Segurança
+
+- **Autenticação OAuth2** com fluxo Client Credentials
+- **Tokens JWT** com expiração controlada
+- **Credenciais seguras** em variáveis de ambiente
+- **Escopos de acesso** (READ/WRITE) para controle granular
+- **HTTPS obrigatório** para todas as comunicações
 
 ## 🐛 Solução de Problemas
 
@@ -164,7 +216,7 @@ pip uninstall lvs-cli
 pip install -e .
 
 # Ou execute diretamente
-python lvs.py -echo "Teste"
+python lvs.py -get 123
 ```
 
 ### Problema: Erro de autenticação
@@ -174,6 +226,16 @@ python lvs.py -echo "Teste"
 echo $LVS_USERNAME  # Linux/macOS
 echo %LVS_USERNAME% # Windows CMD
 $env:LVS_USERNAME   # Windows PowerShell
+
+# Teste a autenticação
+lvs -auth
+```
+
+### Problema: Token expirado
+**Solução:**
+```bash
+# A renovação é automática, mas force uma nova autenticação
+lvs -auth -scope WRITE
 ```
 
 ### Problema: Erro de módulo não encontrado
@@ -186,25 +248,29 @@ pip install requests
 ## 🔄 Desenvolvimento
 
 ### Adicionar Novos Comandos
-1. Edite `lvs.py` e adicione nova função
+1. Edite `lvs.py` e adicione nova função na classe `LVSClient`
 2. Adicione parser argument em `main()`
 3. Atualize `setup.py` se necessário
 4. Reinstale: `pip install -e .`
 
-### Exemplo: Adicionar comando 'status'
+### Exemplo: Adicionar comando 'list'
 ```python
-def check_status():
-    print("Sistema operacional normalmente")
+def list_businesses(self, filters=None):
+    """Lista todos os businesses com filtros opcionais"""
+    endpoint = "/businesses"
+    if filters:
+        endpoint += f"?{filters}"
+    return self.make_authenticated_request("GET", endpoint)
 
 # No main():
-parser.add_argument('-status', action='store_true', help='Verifica status do sistema')
+parser.add_argument('-list', action='store_true', help='Lista todos os businesses')
 ```
 
 ## 🌐 Compatibilidade
 
 ### Sistemas Operacionais Testados
 - ✅ Windows 10/11 (CMD, PowerShell)
-- ✅ Linux (Ubuntu, CentOS)
+- ✅ Linux (Ubuntu, CentOS, Debian)
 - ✅ macOS (bash, zsh)
 
 ### Shells Suportados
@@ -233,29 +299,40 @@ twine upload dist/*
 pip install lvs-cli
 ```
 
-## 🔒 Segurança
+## 🚦 Próximos Passos
 
-- Credenciais armazenadas em variáveis de ambiente
-- Tokens JWT com expiração
-- Validação de entrada de dados
-- Conexões HTTPS com APIs
-
-## 📝 Próximos Passos
-
-1. [ ] Adicionar mais comandos (list, delete, update)
-2. [ ] Implementar logs detalhados
+1. [ ] Adicionar comando `list` para listagem com filtros
+2. [ ] Implementar paginação para grandes conjuntos de dados
 3. [ ] Adicionar suporte a configurações via arquivo YAML
-4. [ ] Criar testes automatizados
+4. [ ] Criar testes automatizados completos
 5. [ ] Adicionar autocompletion para shells
+6. [ ] Implementar modo verbose para debug
+7. [ ] Adicionar suporte a múltiplos ambientes (dev, staging, prod)
 
 ## 🤝 Contribuição
 
 1. Fork o projeto
-2. Crie uma branch para sua feature
-3. Commit suas mudanças
-4. Push para a branch
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo LICENSE para detalhes.
+
+---
+
+**💡 Dica Profissional:** Use aliases para comandos frequentes:
+
+```bash
+# No .bashrc ou $PROFILE
+alias lvs-get='lvs -get'
+alias lvs-auth='lvs -auth'
+alias lvs-create='lvs -create'
+
+# Exemplo de uso rápido:
+lvs-get 123 > business_123.json
+```
+
+**📞 Suporte:** Para issues e dúvidas, abra uma issue no repositório do projeto.
